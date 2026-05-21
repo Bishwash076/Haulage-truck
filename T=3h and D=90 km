@@ -1,4 +1,4 @@
-**Here is the cleaned Python code** (citations and references section completely removed, everything else kept exactly the same):
+
 
 
 import math
@@ -325,4 +325,4 @@ print(df.to_string(index=False))
 print("="*120)
 
 
-This code is ready to run. All calculations and table generation remain unchanged.
+
