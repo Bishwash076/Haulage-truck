@@ -5,102 +5,96 @@ import pandas as pd
 # ======================================================================
 # 0. PHYSICAL CONSTANTS AND FUEL PROPERTIES
 # ======================================================================
-F_FARADAY = 96485.0 # C/mol
-W_O2 = 32.0 # g/mol
-LHV_H2 = 120_000.0 # kJ/kg
-E_GAS = 32_200.0 # kJ/L
+F_FARADAY = 96485.0  # C/mol
+W_O2 = 32.0  # g/mol
+LHV_H2 = 120_000.0  # kJ/kg
+E_GAS = 32_200.0  # kJ/L
 
 # ======================================================================
 # 1. LARGE-SCALE PEMFC STACK INPUTS
 # ======================================================================
-A_cell = 100_000.0 # cm^2
-J_max = 3.0 # A/cm^2
-N_cells = 160 # -
-P_H2 = 484.3836 # atm
-P_O2 = 305.1550 # atm
-R_elec = 1e-5 # Ω
-T_cell = 353.15 # K
-l_mem = 0.1 # cm
-lam_mem = 23.0 # -
-EFF_PMAX = 0.7698 # -
-P_MAX = 941_506.52 # W
-P_TOTAL_ELEC = 920_011.53 # W
-P_TOTAL_THERMAL = -40_971.53 # W
-V_FC_PMAX = 192.14 # V
+A_cell = 100_000.0  # cm^2
+J_max = 3.0  # A/cm^2
+N_cells = 160  # -
+P_H2 = 484.3836  # atm
+P_O2 = 305.1550  # atm
+R_elec = 1e-5  # Ω
+T_cell = 353.15  # K
+l_mem = 0.1  # cm
+lam_mem = 23.0  # -
+EFF_PMAX = 0.7698  # -
+P_MAX = 941_506.52  # W
+P_TOTAL_ELEC = 920_011.53  # W
+P_TOTAL_THERMAL = -40_971.53  # W
+V_FC_PMAX = 192.14  # V
 
-# Derived from stack table
-I_FC_PMAX = P_MAX / V_FC_PMAX # A -> 4900.11 A
-P_STACK_KW = P_MAX / 1000.0 # kW
+# Derived
+I_FC_PMAX = P_MAX / V_FC_PMAX
+P_STACK_KW = P_MAX / 1000.0
 
 # ======================================================================
 # 2. OPERATING SCENARIO FOR MID-SCALE MINING HAULAGE TRUCK
 # ======================================================================
-T_HOURS = 8.0 # h
-T_SEC = T_HOURS * 3600.0 # s
+T_HOURS = 8.0  # h
+T_SEC = T_HOURS * 3600.0  # s
+D_KM = 250.0  # km
 
-D_KM = 250.0 # km
+# Hydrogen Supply
+M_H2_RATE_KG_H = 30.0  # kg/h (total supplied)
 
-M_H2_RATE_KG_H = 30.0 # kg/h
-M_H2_RATE_G_S = M_H2_RATE_KG_H * 1000.0 / 3600.0 # g/s
+# Hydrogen Emission from DWSIM Product Stream
+M_H2_EMI_RATE_KG_H = 0.51  # kg/h - Unconverted H2 (as per DWSIM model)
 
-M_H2_TOTAL_KG = M_H2_RATE_KG_H * T_HOURS # kg
-M_H2_TOTAL_G = M_H2_TOTAL_KG * 1000.0 # g
+# Total Hydrogen
+M_H2_TOTAL_KG = M_H2_RATE_KG_H * T_HOURS
+M_H2_TOTAL_G = M_H2_TOTAL_KG * 1000.0
 
-T_THRO_HOURS = 4.0
-T_THRO_SEC = T_THRO_HOURS * 3600.0 # s
-M_H2_THRO_RATE_KG_H = 100.0 # kg/h
-M_H2_THRO_RATE_G_S = M_H2_THRO_RATE_KG_H * 1000.0 / 3600.0 # g/s
-M_H2_THRO_TOTAL_KG = M_H2_THRO_RATE_KG_H * T_THRO_HOURS # 400 kg
-M_H2_THRO_TOTAL_G = M_H2_THRO_TOTAL_KG * 1000.0 # 400 000 g
+# Emission Hydrogen
+M_H2_EMI_KG = M_H2_EMI_RATE_KG_H * T_HOURS
+M_H2_EMI_G = M_H2_EMI_KG * 1000.0
 
 # ======================================================================
 # 3. VEHICLE & DRIVELINE PARAMETERS — MID-SCALE MINING HAUL TRUCK
 # ======================================================================
-RHO_AIR = 1.225 # kg/m^3
-C_D = 0.80 # -
-A_F = 30.0 # m^2
-V_CRUISE = 40.0 * 1000 / 3600 # m/s
-M_LOADED = 170_000.0 # kg
-G_GRAV = 9.81 # m/s^2
-W_WEIGHT = M_LOADED * G_GRAV # N
-C_RR = 0.03 # -
-ALPHA = math.radians(6.0) # rad
-ACCEL = 0.15 # m/s^2
-M_INERTIA = M_LOADED * 1.04 # kg
-
-TAU_M = 12_000.0 # Nm
-I_G = 30.0 # -
-ETA_D = 0.95 # -
-R_TIRE = 1.45 # m
-N_M_RPM = 2200.0 # rpm
-
-ETA_M = 0.94 # -
-P_M_KW = P_STACK_KW # kW
-P_FC_KW = P_STACK_KW # kW
-
-CP_COOLANT = 3500.0 # J/(kg·K)
-DELTA_T = 10.0 # K
-DELTA_P_PUMP = 150_000.0 # Pa
+RHO_AIR = 1.225  # kg/m^3
+C_D = 0.80
+A_F = 30.0  # m^2
+V_CRUISE = 40.0 * 1000 / 3600  # m/s
+M_LOADED = 170_000.0  # kg
+G_GRAV = 9.81
+W_WEIGHT = M_LOADED * G_GRAV
+C_RR = 0.03
+ALPHA = math.radians(6.0)
+ACCEL = 0.15
+M_INERTIA = M_LOADED * 1.04
+TAU_M = 12_000.0  # Nm
+I_G = 30.0
+ETA_D = 0.95
+R_TIRE = 1.45  # m
+N_M_RPM = 2200.0  # rpm
+ETA_M = 0.94
+P_M_KW = P_STACK_KW
+P_FC_KW = P_STACK_KW
+CP_COOLANT = 3500.0
+DELTA_T = 10.0
+DELTA_P_PUMP = 150_000.0
 ETA_PUMP = 0.70
-RHO_COOLANT = 1050.0 # kg/m^3
-OER = 2.0 # -
-J_OP = 2.0 # A/cm^2
-DELTA_P_COMP = 150_000.0 # Pa
+RHO_COOLANT = 1050.0
+OER = 2.0
+J_OP = 2.0
+DELTA_P_COMP = 150_000.0
 ETA_COMP = 0.72
-RHO_AIR_IN = 1.20 # kg/m^3
-
-OMEGA_W = V_CRUISE / R_TIRE # rad/s
-MU_K = 0.4 # -
-P_HYD = 10e6 # Pa
-D_B = 0.08 # m
-R_M = 0.45 # m
-N_PADS = 4 # -
-N_W_RPM = OMEGA_W * 60 / (2 * math.pi) # rpm
-SOC_FACTOR_K = 1.0 # -
-P_B_MAX = 200_000.0 # W
-TAU_BRK = 25_000.0 # Nm
-
-DELTA_E_B_KJ = 0.0 # kJ
+RHO_AIR_IN = 1.20
+OMEGA_W = V_CRUISE / R_TIRE
+MU_K = 0.4
+P_HYD = 10e6
+D_B = 0.08
+R_M = 0.45
+N_PADS = 4
+P_B_MAX = 200_000.0
+TAU_BRK = 25_000.0
+DELTA_E_B_KJ = 0.0
+SOC_FACTOR_K = 1.0
 
 # ======================================================================
 # 4. EQUATION-BY-EQUATION CALCULATIONS
@@ -118,69 +112,58 @@ def rec(tag, definition, value, unit, note):
 
 # ---------- Section B: Driving range & energy consumption -------------
 E_FC_kWh = P_STACK_KW * T_HOURS
-rec("E_FC", "Total energy output of FC stack (Eq.1)",
+rec("E_FC", "Total energy output of FC stack",
     round(E_FC_kWh, 3), "kWh",
     "Pmax × T = 941.50652 kW × 8 h")
 
 P_TOTAL_NET_W = P_TOTAL_ELEC + P_TOTAL_THERMAL
 eta_prop = P_MAX / P_TOTAL_NET_W
-rec("η_prop", "Stack power / (P_elec + P_thermal) (Eq.3)",
+rec("η_prop", "Stack power / (P_elec + P_thermal)",
     round(eta_prop, 4), "-",
-    "P_max / (P_elec + P_thermal)")
+    f"P_max / (P_elec + P_thermal) = {P_MAX/1000:.2f} / {P_TOTAL_NET_W/1000:.2f}")
 
 C_H2_per_100km = 100.0 * M_H2_TOTAL_KG / (D_KM * eta_prop)
-rec("C_H2", "H2 consumption per 100 km (Eq.6)",
+rec("C_H2", "H2 consumption per 100 km",
     round(C_H2_per_100km, 3), "kg / 100 km",
-    f"100 × {M_H2_TOTAL_KG} kg / ({D_KM} km × {eta_prop:.4f})")
+    f"100 × {M_H2_TOTAL_KG:.1f} kg / ({D_KM} km × {eta_prop:.4f})")
 
 C_E_per_100km = 100.0 * E_FC_kWh / D_KM
-rec("C_E", "Electricity consumption per 100 km (Eq.7)",
+rec("C_E", "Electricity consumption per 100 km",
     round(C_E_per_100km, 3), "kWh / 100 km",
     f"100 × {E_FC_kWh:.2f} kWh / {D_KM} km")
 
-# ---------- Section C: Hydrogen emissions ----------------------------
-M_H2_actual_g = M_H2_RATE_G_S * T_SEC
-rec("M_H2", "Actual H2 consumption over T (Eq.8)",
-    round(M_H2_actual_g, 1), "g",
-    f"ṁ_H2 × T = {M_H2_RATE_G_S:.3f} g/s × {T_SEC:.0f} s (30 kg/h × 8 h)")
+# ---------- Section C: Hydrogen emissions (Updated per Paper) ---------
+rec("M_H2_emi", "H2 emission from FC stack over T",
+    round(M_H2_EMI_G, 1), "g",
+    f"0.51 kg/h × {T_HOURS} h = {M_H2_EMI_G:.1f} g (DWSIM product stream)")
 
-M_H2_thro_g = M_H2_THRO_RATE_G_S * T_THRO_SEC
-rec("M_H2_thro", "Theoretical H2 consumption (Eq.9)",
-    round(M_H2_thro_g, 1), "g",
-    f"ṁ_thro × T = {M_H2_THRO_RATE_G_S:.3f} g/s × {T_THRO_SEC:.0f} s")
-
-M_H2_emi_g = M_H2_actual_g - M_H2_thro_g
-rec("M_H2_emi", "H2 emission from FC stack (Eq.11)",
-    round(M_H2_emi_g, 1), "g",
-    "Negative value means actual consumption < theoretical reference case")
-
-C_H2_emi = 100.0 * M_H2_emi_g / D_KM
-rec("C_H2_emi", "H2 emission per 100 km (Eq.12)",
+C_H2_emi = 100.0 * M_H2_EMI_G / D_KM
+rec("C_H2_emi", "H2 emission per 100 km",
     round(C_H2_emi, 2), "g / 100 km",
     f"100 × M_H2_emi / D ({D_KM} km)")
 
 Q_s_kJ = P_STACK_KW * T_SEC
-rec("Q_s", "Output energy of FC stack (Eq.14)",
+rec("Q_s", "Output energy of FC stack",
     round(Q_s_kJ, 1), "kJ",
     f"P_s × T = {P_STACK_KW:.3f} kW × {T_SEC:.0f} s")
 
-b_H2_emi = 3600.0 * M_H2_emi_g / Q_s_kJ
-rec("b_H2_emi", "H2 emission rate of FC stack (Eq.13)",
+b_H2_emi = 3600.0 * M_H2_EMI_G / Q_s_kJ
+rec("b_H2_emi", "H2 emission rate of FC stack",
     round(b_H2_emi, 4), "g / kWh",
-    "3600 × M_H2_emi / Q_s")
+    "3600 × M_H2_emi / Q_s (DWSIM-based)")
 
 # ---------- Vehicle Model Equations ----------------------------------
 F_tf = (0.5 * RHO_AIR * C_D * A_F * V_CRUISE**2
         + W_WEIGHT * C_RR * math.cos(ALPHA)
         + W_WEIGHT * math.sin(ALPHA)
         + ACCEL * M_INERTIA)
-rec("F_tf", "Total tractive force on wheels (Veh-Eq.1)",
+rec("F_tf", "Total tractive force on wheels",
     round(F_tf, 1), "N",
-    f"v={V_CRUISE:.2f} m/s, α={math.degrees(ALPHA):.1f}°, a={ACCEL} m/s², M={M_LOADED/1000} t")
+    f"v={V_CRUISE:.2f} m/s, α={math.degrees(ALPHA):.1f}°, a={ACCEL} m/s²")
 
 wheel_tract = TAU_M * I_G * ETA_D / R_TIRE
 d_p = (wheel_tract - W_WEIGHT * C_RR - 0.5 * RHO_AIR * C_D * A_F * V_CRUISE**2) / W_WEIGHT
-rec("d_p", "Performance factor (Veh-Eq.2)",
+rec("d_p", "Performance factor",
     round(d_p, 4), "-",
     f"τ_m={TAU_M} Nm, i_g={I_G}, η_d={ETA_D}, r={R_TIRE} m")
 
@@ -195,129 +178,85 @@ else:
     grade_pct = math.tan(math.asin(sin_alpha_max)) * 100
     grade_note = "Computed from d_p and C_rr"
 
-rec("α_max", "Maximum gradeability at cruise (Veh-Eq.3)",
+rec("α_max", "Maximum gradeability at cruise",
     round(math.degrees(math.asin(sin_alpha_max)), 2) if not math.isnan(sin_alpha_max) else "n/a",
     "deg", grade_note)
-
 rec("Grade_max", "Maximum climbable grade at cruise",
     round(grade_pct, 2) if not math.isnan(grade_pct) else "n/a",
     "%", "tan(α_max) × 100")
 
-a_0 = (wheel_tract - W_WEIGHT * C_RR - 0) / M_INERTIA
-rec("a(v=0)", "Initial acceleration from standstill (Veh-Eq.7)",
-    round(a_0, 3), "m/s²",
-    "τ_m·i_g·η_d/r − W·C_rr, divided by M_inertia")
+a_0 = (wheel_tract - W_WEIGHT * C_RR) / M_INERTIA
+rec("a(v=0)", "Initial acceleration from standstill",
+    round(a_0, 3), "m/s²", "")
 
 v_target = 40.0 * 1000 / 3600
 vv = np.linspace(0.001, v_target, 4001)
-integrand = M_INERTIA / (wheel_tract - W_WEIGHT * C_RR
-                         - 0.5 * RHO_AIR * C_D * A_F * vv**2)
+integrand = M_INERTIA / (wheel_tract - W_WEIGHT * C_RR - 0.5 * RHO_AIR * C_D * A_F * vv**2)
 t_0_40 = np.trapezoid(integrand, vv)
-rec("t_0→40", "Time to accelerate 0→40 km/h (Veh-Eq.8)",
-    round(t_0_40, 2), "s",
-    "Numerical integration of dv·M/(F_trac−F_roll−F_drag)")
+rec("t_0→40", "Time to accelerate 0→40 km/h",
+    round(t_0_40, 2), "s", "Numerical integration")
 
 v_max_kmh = (math.pi * N_M_RPM * R_TIRE / (30 * I_G)) * 3600 / 1000
-rec("v_max", "Maximum vehicle speed (Veh-Eq.9)",
-    round(v_max_kmh, 2), "km/h",
-    f"π·{N_M_RPM} rpm·{R_TIRE} m / (30·{I_G}) × 3.6")
+rec("v_max", "Maximum vehicle speed",
+    round(v_max_kmh, 2), "km/h", f"N_m={N_M_RPM} rpm")
 
-H2_cons_g_per_km = M_H2_actual_g / D_KM
+H2_cons_g_per_km = M_H2_TOTAL_G / D_KM
 Q_cons = (H2_cons_g_per_km / 1000.0 * LHV_H2 / E_GAS
           + DELTA_E_B_KJ / (E_GAS * D_KM)) * 100.0
-rec("Q_cons", "Gasoline-equivalent consumption (Eq.17)",
-    round(Q_cons, 2), "L_ge / 100 km",
-    f"LHV_H2={LHV_H2} kJ/kg; E_gas={E_GAS} kJ/L")
+rec("Q_cons", "Gasoline-equivalent consumption",
+    round(Q_cons, 2), "L_ge / 100 km", "")
 
 P_b_kW = P_M_KW / ETA_M - P_FC_KW
-rec("P_b", "Required battery nominal power (Eq.18)",
-    round(P_b_kW, 2), "kW",
-    "P_m/η_m − P_fc")
+rec("P_b", "Required battery nominal power",
+    round(P_b_kW, 2), "kW", "P_m/η_m − P_fc")
 
 # ---------- Auxiliary Systems ---------------------------------------
 Q_dot_W = abs(P_TOTAL_THERMAL)
 m_dot_clt = Q_dot_W / (CP_COOLANT * DELTA_T)
-rec("Q̇", "Required cooling capacity (Eq.19)",
-    round(Q_dot_W, 1), "W",
-    "Absolute value of total thermal power")
-
-rec("ṁ_clt", "Coolant mass flow rate (Eq.19 inverted)",
-    round(m_dot_clt, 3), "kg/s",
-    "Q̇/(Cp·ΔT)")
-
+rec("Q̇", "Required cooling capacity", round(Q_dot_W, 1), "W", "")
+rec("ṁ_clt", "Coolant mass flow rate", round(m_dot_clt, 3), "kg/s", "")
 V_dot_clt = m_dot_clt / RHO_COOLANT
-rec("V̇_clt", "Coolant volumetric flow (Eq.20)",
-    round(V_dot_clt * 1000, 3), "L/s",
-    "ṁ/ρ")
-
+rec("V̇_clt", "Coolant volumetric flow", round(V_dot_clt * 1000, 3), "L/s", "")
 P_pump_W = V_dot_clt * DELTA_P_PUMP / ETA_PUMP
-rec("P_pump", "Pump electrical power (Eq.21)",
-    round(P_pump_W, 1), "W",
-    f"ΔP={DELTA_P_PUMP/1e5} bar, η_pump={ETA_PUMP}")
+rec("P_pump", "Pump electrical power", round(P_pump_W, 1), "W", "")
 
 m_dot_O2_g_s = (W_O2 * N_cells * A_cell * J_OP / (4 * F_FARADAY)) * OER
-rec("ṁ_O2", "Oxygen mass flow rate (Eq.22)",
-    round(m_dot_O2_g_s, 3), "g/s",
-    "W_O2·N·A·i/(4F)·OER")
-
+rec("ṁ_O2", "Oxygen mass flow rate", round(m_dot_O2_g_s, 3), "g/s", "")
 V_dot_O2 = (m_dot_O2_g_s / 1000.0) / RHO_AIR_IN
-rec("V̇_O2", "Air/O2 volumetric flow rate (Eq.23)",
-    round(V_dot_O2, 4), "m³/s",
-    "ṁ_O2/ρ_air")
-
+rec("V̇_O2", "Air/O2 volumetric flow rate", round(V_dot_O2, 4), "m³/s", "")
 P_comp_W = V_dot_O2 * DELTA_P_COMP / ETA_COMP
-rec("P_comp", "Compressor electrical power (Eq.24)",
-    round(P_comp_W, 1), "W",
-    f"ΔP={DELTA_P_COMP/1e5} bar, η_comp={ETA_COMP}")
+rec("P_comp", "Compressor electrical power", round(P_comp_W, 1), "W", "")
 
 P_aux_total_W = P_pump_W + P_comp_W + 80.0
-rec("P_aux", "Total auxiliary load (pump+comp+80 W)",
-    round(P_aux_total_W, 1), "W",
-    "Auxiliary load sum")
+rec("P_aux", "Total auxiliary load", round(P_aux_total_W, 1), "W", "")
 
 # ---------- Braking system ------------------------------------------
 P_brk_W = TAU_BRK * OMEGA_W
-rec("P_brk", "Total braking power demanded (Eq.25)",
-    round(P_brk_W, 1), "W",
-    f"τ_brk={TAU_BRK} Nm × ω_w")
+rec("P_brk", "Total braking power demanded", round(P_brk_W, 1), "W", "")
 
 tau_disc = (MU_K * P_HYD * D_B * math.pi * D_B * R_M * N_PADS) / 4.0
 P_brk_mech_W = tau_disc * OMEGA_W
-rec("τ_disc", "Disc brake torque (Eq.27)",
-    round(tau_disc, 1), "Nm",
-    f"μ_k={MU_K}, P={P_HYD/1e6} MPa, D_b={D_B} m, R_m={R_M} m, N={N_PADS}")
-
-rec("P_brk_mech", "Mechanical brake power (Eq.26)",
-    round(P_brk_mech_W, 1), "W",
-    "τ_disc × ω_w")
+rec("τ_disc", "Disc brake torque", round(tau_disc, 1), "Nm", "")
+rec("P_brk_mech", "Mechanical brake power", round(P_brk_mech_W, 1), "W", "")
 
 P_brk_rgn_W = max(0.0, P_brk_W - P_brk_mech_W)
 P_brk_rgn_W = min(P_brk_rgn_W, P_B_MAX * SOC_FACTOR_K)
-rec("P_brk_rgn", "Regenerative braking power",
-    round(P_brk_rgn_W, 1), "W",
-    "Limited by battery charging power")
+rec("P_brk_rgn", "Regenerative braking power", round(P_brk_rgn_W, 1), "W", "")
 
 N_m_regen_rpm = N_M_RPM * 0.5
 tau_m_regen = P_brk_rgn_W * ETA_D / (2 * math.pi * N_m_regen_rpm / 60)
-rec("τ_m,regen", "Regen motor torque (Eq.28)",
-    round(tau_m_regen, 2), "Nm",
-    f"At N_m={N_m_regen_rpm} rpm")
+rec("τ_m,regen", "Regen motor torque", round(tau_m_regen, 2), "Nm", "")
 
 P_elc_W = P_brk_rgn_W / ETA_M
-rec("P_elc", "IPMSM electrical power in regen (Eq.29)",
-    round(P_elc_W, 1), "W",
-    "P_mech/η_m")
+rec("P_elc", "IPMSM electrical power in regen", round(P_elc_W, 1), "W", "")
 
 tau_disc_required = TAU_BRK - tau_m_regen * I_G
-rec("τ_disc,req", "Required friction brake torque (Eq.30)",
-    round(tau_disc_required, 1), "Nm",
-    "τ_brk − τ_m·i_g")
+rec("τ_disc,req", "Required friction brake torque", round(tau_disc_required, 1), "Nm", "")
 
 # ======================================================================
 # 5. RESULTS TABLE
 # ======================================================================
 df = pd.DataFrame(results, columns=["Parameter", "Definition", "Value", "Unit", "Source / Assumption"])
-
 pd.set_option("display.max_colwidth", 80)
 pd.set_option("display.width", 200)
 pd.set_option("display.max_rows", None)
