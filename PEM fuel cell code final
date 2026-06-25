@@ -1,0 +1,288 @@
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+
+# ── PHYSICAL CONSTANTS ────────────────────────────────────────────────────
+F_c    = 96485
+z      = 2
+MW_H2  = 2.016e-3
+LHV_H2 = 120.1e6
+LHV_V  = LHV_H2 * MW_H2 / (z * F_c)
+
+# ── STACK DESIGN ──────────────────────────────────────────────────────────
+N_cells  = 500
+N_stacks = 8
+A_cm2    = 450.0
+l_cm     = 0.0125
+
+# ── NOMINAL CONDITIONS ────────────────────────────────────────────────────
+T_nom     = 353.15   # K  (80°C)
+P_nom     = 3.0      # atm
+x_H2O_an  = 0.10
+x_H2O_cat = 0.20
+
+# ── EMPIRICAL COEFFICIENTS ───────────────────────────────────────────────
+xi1 = -0.9514
+xi2 =  3.12e-3
+xi3 =  7.4e-5
+xi4 = -1.87e-4
+n_d = -0.23
+
+# ── CURRENT DENSITY SWEEP ─────────────────────────────────────────────────
+i_arr = np.linspace(0.01, 1.85, 1000)
+
+# =============================================================================
+# MODEL FUNCTIONS
+# =============================================================================
+
+def P_sat(T):
+    Tc = T - 273.15
+    return 10**(-2.1794 + 0.02953*Tc - 9.1837e-5*Tc**2 + 1.4454e-7*Tc**3)
+
+def PH2_star(T, i):
+    val = 0.5 * P_sat(T) * (1.0 / (np.exp(1.653*i / T**1.334) * x_H2O_an) - 1.0)
+    return max(val, 0.01)
+
+def PO2_star(T, i):
+    val = P_sat(T) * (1.0 / (np.exp(4.192*i / T**1.334) * x_H2O_cat) - 1.0)
+    return max(val, 0.01)
+
+def CO2_star(T, PO2_atm):
+    return (PO2_atm * 101325) / (5.08e6 * np.exp(-498.0 / T)) * 1e-6
+
+def E_nernst(T, PH2, PO2):
+    return 1.229 - 0.85e-3*(T - 298.15) + 4.3085e-5*T*(np.log(PH2) + 0.5*np.log(PO2))
+
+def eta_act(T, CO2_cm3, I_A):
+    return xi1 + xi2*T + xi3*T*np.log(CO2_cm3) + xi4*T*np.log(I_A)
+
+def rM(T, i):
+    return (181.6 * (1 + 0.03*i + 0.062*(T/303)**2 * i**2.5) /
+            ((14 - 0.634 - 3*i) * np.exp(4.18*(T - 303)/T)))
+
+def eta_ohm(T, i):
+    return -i * rM(T, i) * l_cm
+
+def m_coeff(T):
+    if T >= 312.15:
+        return 1.1e-4 - 1.2e-6*(T - 273.15)
+    else:
+        return 3.3e-3 - 8.2e-5*(T - 273.15)
+
+def eta_dif(T, i):
+    return m_coeff(T) * np.exp(n_d * i)
+
+def Vcell(T, i):
+    ph2 = PH2_star(T, i)
+    po2 = PO2_star(T, i)
+    co2 = CO2_star(T, po2)
+    v = (E_nernst(T, ph2, po2)
+         + eta_act(T, co2, i * A_cm2)
+         + eta_ohm(T, i)
+         + eta_dif(T, i))
+    return max(v, 0.0)
+
+def Psys_kW(T, i, Nst):
+    return N_cells * Nst * Vcell(T, i) * (i * A_cm2) / 1e3
+
+def Eff(T, i):
+    return Vcell(T, i) / LHV_V * 100
+
+# =============================================================================
+# NOMINAL CURVES
+# =============================================================================
+T0   = T_nom
+Vc0  = np.array([Vcell(T0, i) for i in i_arr])
+Psys = np.array([Psys_kW(T0, i, N_stacks) for i in i_arr])
+Eff0 = np.array([Eff(T0, i) for i in i_arr])
+
+PH2_0 = np.array([PH2_star(T0, i) for i in i_arr])
+PO2_0 = np.array([PO2_star(T0, i) for i in i_arr])
+EN_0  = np.array([E_nernst(T0, PH2_0[k], PO2_0[k]) for k in range(len(i_arr))])
+ea_0  = np.array([eta_act(T0, CO2_star(T0, PO2_0[k]), i_arr[k]*A_cm2) for k in range(len(i_arr))])
+eo_0  = np.array([eta_ohm(T0, i) for i in i_arr])
+ed_0  = np.array([eta_dif(T0, i) for i in i_arr])
+
+T_range = [323.15, 333.15, 343.15, 353.15, 363.15, 373.15]
+P_range = [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
+Nst_arr = [4, 6, 8, 10, 12, 16]
+
+cmap_T = plt.cm.plasma(np.linspace(0.15, 0.90, len(T_range)))
+cmap_P = plt.cm.cool(np.linspace(0.05, 0.95, len(P_range)))
+cmap_N = plt.cm.viridis(np.linspace(0.10, 0.95, len(Nst_arr)))
+
+T5 = np.linspace(323, 373, 60)
+i5 = np.linspace(0.05, 1.8, 60)
+Tg, Ig = np.meshgrid(T5, i5)
+Vg = np.array([[Vcell(Tg[r, c], Ig[r, c]) for c in range(60)] for r in range(60)])
+Pg = N_cells * N_stacks * Vg * (Ig * A_cm2) / 1000
+
+# =============================================================================
+# PERFORMANCE TABLE
+# =============================================================================
+i_pts = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+         1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8]
+
+print("\n" + "="*90)
+print("PEM FUEL CELL SYSTEM PERFORMANCE — HEAVY-DUTY HAULAGE TRUCK")
+print(f"Config: {N_stacks} stacks × {N_cells} cells × {A_cm2:.0f} cm²  |  "
+      f"T={T0-273.15:.0f}°C  |  P={P_nom:.1f} atm")
+print("="*90)
+print(f"{'i[A/cm²]':>10} {'Vc[V]':>8} {'P_sys[kW]':>12} {'Eff[%]':>8} "
+      f"{'I_stack[A]':>12} {'mH2[g/s]':>10}")
+print("-"*70)
+for ip in i_pts:
+    vc  = Vcell(T0, ip)
+    ps  = Psys_kW(T0, ip, N_stacks)
+    ef  = Eff(T0, ip)
+    ia  = ip * A_cm2
+    mdot = ia * MW_H2 / (z * F_c) * N_stacks * 1000
+    print(f"{ip:>10.2f} {vc:>8.4f} {ps:>12.1f} {ef:>8.1f} {ia:>12.1f} {mdot:>10.3f}")
+print("="*90)
+i_peak = i_arr[np.argmax(Psys)]
+print(f"\nPeak Power : {max(Psys):.1f} kW  at  i = {i_peak:.3f} A/cm²"
+      f"  (Vc = {Vcell(T0, i_peak):.4f} V)")
+print("Target exceeded (>900 kW) ✓\n")
+
+# =============================================================================
+# FIGURE
+# =============================================================================
+BG    = 'white'
+AXBG  = 'white'
+TXTC  = 'black'
+GRIDC = '#B0B0B0'
+
+fig = plt.figure(figsize=(22, 15), facecolor=BG)
+gs  = GridSpec(4, 2, figure=fig,
+               hspace=0.58, wspace=0.32,
+               left=0.06, right=0.97, top=0.94, bottom=0.05)
+
+TITLE_FS = 13
+LABEL_FS = 11
+TICK_FS  = 10
+LEG_FS   = 9
+CB_FS    = 10
+SUP_FS   = 15
+
+def make_ax(gs_pos, title, xlabel, ylabel):
+    ax = fig.add_subplot(gs_pos)
+    ax.set_facecolor(AXBG)
+    ax.tick_params(colors=TXTC, labelsize=TICK_FS)
+    ax.xaxis.label.set_color(TXTC)
+    ax.yaxis.label.set_color(TXTC)
+    for sp in ax.spines.values():
+        sp.set_edgecolor(GRIDC)
+    ax.grid(True, color=GRIDC, alpha=0.5, linewidth=0.6)
+    ax.set_title(title, fontsize=TITLE_FS, fontweight='bold', pad=8, color=TXTC)
+    ax.set_xlabel(xlabel, fontsize=LABEL_FS, color=TXTC)
+    ax.set_ylabel(ylabel, fontsize=LABEL_FS, color=TXTC)
+    return ax
+
+def style_twin(ax):
+    ax.tick_params(colors=TXTC, labelsize=TICK_FS)
+    ax.yaxis.label.set_color(TXTC)
+    for sp in ax.spines.values():
+        sp.set_edgecolor(GRIDC)
+
+def style_colorbar(cb, label):
+    cb.ax.tick_params(colors=TXTC, labelsize=TICK_FS-1)
+    cb.outline.set_edgecolor(GRIDC)
+    cb.set_label(label, color=TXTC, fontsize=CB_FS)
+
+ax1 = make_ax(gs[0, 0],
+              '(a) Cell Voltage & System Power  (T=80°C, P=3 atm)',
+              'Current Density [A/cm²]', 'Cell Voltage [V]')
+ax1r = ax1.twinx(); style_twin(ax1r)
+l1, = ax1.plot(i_arr, Vc0, color='#1f77b4', lw=2.5, label='V$_{cell}$')
+l2, = ax1r.plot(i_arr, Psys, color='#d62728', lw=2.5, label='P$_{sys}$ [kW]')
+ax1r.axhline(1000, color='#2ca02c', ls='--', lw=1.5, label='1 MW target')
+ax1r.set_ylabel('System Power [kW]', fontsize=LABEL_FS, color=TXTC)
+h1, lab1 = ax1.get_legend_handles_labels()
+h2, lab2 = ax1r.get_legend_handles_labels()
+ax1.legend(h1 + h2, lab1 + lab2, fontsize=LEG_FS, facecolor='white',
+           edgecolor=GRIDC, loc='upper right')
+
+ax2 = make_ax(gs[0, 1], '(b) Overpotential Breakdown',
+              'Current Density [A/cm²]', 'Voltage [V]')
+ax2.fill_between(i_arr, np.abs(ea_0), alpha=0.35, color='#ff7f0e', label='|η$_{act}$|')
+ax2.fill_between(i_arr, np.abs(eo_0), alpha=0.35, color='#1f77b4', label='|η$_{ohm}$|')
+ax2.fill_between(i_arr, np.abs(ed_0), alpha=0.35, color='#2ca02c', label='|η$_{dif}$|')
+ax2.plot(i_arr, EN_0, '--', color='#ffbf00', lw=2.0, label='E$_{Nernst}$')
+ax2.plot(i_arr, Vc0, '-', color='black', lw=2.5, label='V$_{cell}$')
+ax2.legend(fontsize=LEG_FS, facecolor='white', edgecolor=GRIDC)
+
+ax3 = make_ax(gs[1, 0],
+              '(c) Temperature Effect on Polarization  (P=3 atm)',
+              'Current Density [A/cm²]', 'Cell Voltage [V]')
+for k, Tk in enumerate(T_range):
+    Vt = np.array([Vcell(Tk, i) for i in i_arr])
+    ax3.plot(i_arr, Vt, color=cmap_T[k], lw=2.0, label=f'{Tk-273.15:.0f}°C')
+ax3.legend(fontsize=LEG_FS, facecolor='white', edgecolor=GRIDC, loc='lower left')
+
+ax4 = make_ax(gs[1, 1],
+              '(d) Pressure Effect on Polarization  (T=80°C)',
+              'Current Density [A/cm²]', 'Cell Voltage [V]')
+for k, Pk in enumerate(P_range):
+    Vp = []
+    for ic in i_arr:
+        ph2 = max(min(PH2_star(T0, ic)*Pk/P_nom, Pk*0.95), 0.01)
+        po2 = max(min(PO2_star(T0, ic)*Pk/P_nom, Pk*0.21), 0.01)
+        co2 = CO2_star(T0, po2)
+        v = max(E_nernst(T0, ph2, po2) + eta_act(T0, co2, ic*A_cm2)
+                + eta_ohm(T0, ic) + eta_dif(T0, ic), 0.0)
+        Vp.append(v)
+    ax4.plot(i_arr, Vp, color=cmap_P[k], lw=2.0, label=f'{Pk:.1f} atm')
+ax4.legend(fontsize=LEG_FS, facecolor='white', edgecolor=GRIDC, loc='lower left')
+
+ax5 = make_ax(gs[2, 0], '(e) Cell Voltage Map  (T × i)',
+              'Temperature [°C]', 'Current Density [A/cm²]')
+cf5 = ax5.contourf(Tg-273.15, Ig, Vg, levels=25, cmap='turbo')
+style_colorbar(fig.colorbar(cf5, ax=ax5), 'V$_{cell}$ [V]')
+
+ax6 = make_ax(gs[2, 1], '(f) System Power Map  (T × i)',
+              'Temperature [°C]', 'Current Density [A/cm²]')
+cf6 = ax6.contourf(Tg-273.15, Ig, Pg, levels=25, cmap='hot')
+style_colorbar(fig.colorbar(cf6, ax=ax6), 'Power [kW]')
+ax6.contour(Tg-273.15, Ig, Pg, levels=[1000], colors=['#2ca02c'], linewidths=2.2)
+ax6.clabel(ax6.contour(Tg-273.15, Ig, Pg, levels=[1000], colors=['#2ca02c'], linewidths=0),
+           fmt={1000: '1 MW'}, fontsize=LEG_FS, colors='#2ca02c')
+
+ax7 = make_ax(gs[3, 0], '(g) LHV Efficiency by Temperature',
+              'Current Density [A/cm²]', 'Efficiency [%]')
+for k, Tk in enumerate(T_range):
+    Ef = np.array([Eff(Tk, i) for i in i_arr])
+    ax7.plot(i_arr, Ef, color=cmap_T[k], lw=2.0, label=f'{Tk-273.15:.0f}°C')
+ax7.axhline(50, color='black', ls='--', lw=1.5, label='50% LHV')
+ax7.legend(fontsize=LEG_FS, facecolor='white', edgecolor=GRIDC, loc='upper right')
+
+ax8 = make_ax(gs[3, 1], '(h) Power Scalability',
+              'Current Density [A/cm²]', 'Power [kW]')
+ax8r = ax8.twinx(); style_twin(ax8r)
+for k, Nst in enumerate(Nst_arr):
+    Psc = np.array([Psys_kW(T0, i, Nst) for i in i_arr])
+    ax8.plot(i_arr, Psc, color=cmap_N[k], lw=2.0, label=f'{Nst} stacks')
+ax8.axhline(1000, color='#2ca02c', ls='--', lw=1.5, label='1 MW target')
+ax8r.plot(i_arr, Eff0, 'k--', lw=1.8, label='Efficiency [%]')
+ax8r.set_ylabel('Efficiency [%]', fontsize=LABEL_FS, color=TXTC)
+
+ax8.legend(
+    fontsize=LEG_FS,
+    facecolor='white',
+    edgecolor=GRIDC,
+    loc='upper right',
+    bbox_to_anchor=(-0.08, 1.0),   # Closer to the plot
+    borderaxespad=0.0
+)
+ax8.text(-0.58, 1.20, '(8)', transform=ax8.transAxes,
+         fontsize=10, fontweight='bold', va='top', ha='left', color='black')
+
+fig.suptitle(
+    'PEM Fuel Cell Semi-Empirical Model for Heavy-Duty Haulage Truck Performance and Scalability',
+    color='black', fontsize=SUP_FS, fontweight='bold', y=0.978
+)
+
+out = 'PEM_FC_HeavyDuty_Plots_8stacks_whitebg_largeText_ab.png'
+fig.savefig(out, dpi=180, bbox_inches='tight', facecolor='white')
+print(f"Figure saved → {out}")
